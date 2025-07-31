@@ -3,6 +3,7 @@
 use crate::{OutputFormat, Table};
 use log::debug;
 use std::fmt::Display;
+use std::ops::RangeInclusive;
 use tpchgen::generators::{
     CustomerGenerator, OrderGenerator, PartGenerator, PartSuppGenerator, SupplierGenerator,
 };
@@ -52,8 +53,8 @@ use tpchgen::generators::{
 pub struct GenerationPlan {
     /// Total number of parts to generate
     part_count: i32,
-    /// List of parts
-    part_list: Vec<i32>,
+    /// List of parts (1..=part_count)
+    part_list: RangeInclusive<i32>,
 }
 
 impl GenerationPlan {
@@ -118,7 +119,7 @@ impl GenerationPlan {
         if table == &Table::Nation || table == &Table::Region {
             return Ok(Self {
                 part_count: 1,
-                part_list: vec![1],
+                part_list: 1..=1,
             });
         }
 
@@ -130,7 +131,7 @@ impl GenerationPlan {
         // The new part numbers to generate are the chunks that make up the original part.
         let start_part = (cli_part - 1) * num_chunks + 1;
         let end_part = cli_part * num_chunks;
-        let new_parts_to_generate = (start_part..=end_part).collect();
+        let new_parts_to_generate = start_part..=end_part;
         debug!(
             "Generating {} parts for table {:?} with scale factor {}",
             new_total_parts, table, scale_factor
@@ -198,7 +199,7 @@ impl GenerationPlan {
 
         Ok(Self {
             part_count: num_parts,
-            part_list: (1..=num_parts).collect(),
+            part_list: 1..=num_parts,
         })
     }
 }
@@ -210,7 +211,6 @@ impl IntoIterator for GenerationPlan {
 
     fn into_iter(self) -> Self::IntoIter {
         self.part_list
-            .into_iter()
             .map(|part_number| (part_number, self.part_count))
             .collect::<Vec<_>>()
             .into_iter()
@@ -233,7 +233,7 @@ mod tests {
             .with_table(Table::Nation)
             .with_format(OutputFormat::Tbl)
             .with_scale_factor(1.0)
-            .assert(1, [1])
+            .assert(1, 1..=1)
     }
 
     #[test]
@@ -242,7 +242,7 @@ mod tests {
             .with_table(Table::Region)
             .with_format(OutputFormat::Tbl)
             .with_scale_factor(1.0)
-            .assert(1, [1])
+            .assert(1, 1..=1)
     }
 
     #[test]
@@ -251,7 +251,7 @@ mod tests {
             .with_table(Table::Part)
             .with_format(OutputFormat::Tbl)
             .with_scale_factor(1.0)
-            .assert(2, [1, 2])
+            .assert(2, 1..=2)
     }
 
     #[test]
@@ -260,7 +260,7 @@ mod tests {
             .with_table(Table::Supplier)
             .with_format(OutputFormat::Tbl)
             .with_scale_factor(1.0)
-            .assert(1, [1])
+            .assert(1, 1..=1)
     }
 
     #[test]
@@ -269,7 +269,7 @@ mod tests {
             .with_table(Table::Partsupp)
             .with_format(OutputFormat::Tbl)
             .with_scale_factor(1.0)
-            .assert(2, [1, 2])
+            .assert(2, 1..=2)
     }
 
     #[test]
@@ -309,7 +309,7 @@ mod tests {
             .with_cli_part(1)
             .with_cli_part_count(10)
             // we expect there is still only one part
-            .assert(1, [1])
+            .assert(1, 1..=1)
     }
 
     #[test]
@@ -322,7 +322,7 @@ mod tests {
             .with_cli_part(1)
             .with_cli_part_count(10)
             // we expect there is still only one part
-            .assert(1, [1])
+            .assert(1, 1..=1)
     }
 
     #[test]
@@ -335,7 +335,7 @@ mod tests {
             .with_cli_part(1)
             .with_cli_part_count(10)
             // we expect there are num_threads * 10 parts
-            .assert(40, [1, 2, 3, 4])
+            .assert(40, 1..=4)
     }
 
     #[test]
@@ -347,7 +347,7 @@ mod tests {
             .with_cli_part(4) // part 4 of 10
             .with_cli_part_count(10)
             // we expect there are num_threads * 10 parts
-            .assert(40, [13, 14, 15, 16])
+            .assert(40, 13..=16)
     }
 
     #[test]
@@ -359,7 +359,7 @@ mod tests {
             .with_cli_part(10) // part 10 of 10
             .with_cli_part_count(10)
             // we expect there are num_threads * 10 parts
-            .assert(40, [37, 38, 39, 40])
+            .assert(40, 37..=40)
     }
 
     #[test]
@@ -449,11 +449,7 @@ mod tests {
 
         /// Create a [`GenerationPlan`] and assert it has the
         /// expected number of parts and part numbers.
-        fn assert(
-            self,
-            expected_part_count: i32,
-            expected_part_numbers: impl IntoIterator<Item = i32>,
-        ) {
+        fn assert(self, expected_part_count: i32, expected_part_numbers: RangeInclusive<i32>) {
             let plan = GenerationPlan::try_new(
                 &self.table,
                 self.format,
@@ -464,7 +460,6 @@ mod tests {
             )
             .unwrap();
             assert_eq!(plan.part_count, expected_part_count);
-            let expected_part_numbers: Vec<i32> = expected_part_numbers.into_iter().collect();
             assert_eq!(plan.part_list, expected_part_numbers);
         }
 
