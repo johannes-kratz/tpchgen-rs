@@ -1,5 +1,4 @@
-//! [`GenerationPlan`] that describes how to generate a TPC-H dataset.
-//! [`GenerationPlan`] that describes how to generate a TPC-H dataset.
+//! * [`GenerationPlan`]: how to generate a specific TPC-H dataset.
 
 use crate::{OutputFormat, Table};
 use log::debug;
@@ -9,7 +8,8 @@ use tpchgen::generators::{
     CustomerGenerator, OrderGenerator, PartGenerator, PartSuppGenerator, SupplierGenerator,
 };
 
-/// A list of generator "parts" (data generator chunks, not TPCH parts)
+/// A list of generator "parts" (data generator chunks, not TPCH parts) for a
+/// single output file.
 ///
 /// Controls the parallelization and layout of Parquet files in `tpchgen-cli`.
 ///
@@ -50,7 +50,7 @@ use tpchgen::generators::{
 /// let results = plan.into_iter().collect::<Vec<_>>();
 /// /// assert_eq!(results.len(), 1);
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GenerationPlan {
     /// Total number of parts to generate
     part_count: i32,
@@ -68,7 +68,7 @@ impl GenerationPlan {
     /// * `cli_part_count`: optional total number of parts, `--parts` CLI argument
     /// * `parquet_row_group_size`: optional parquet row group size, `--parquet-row-group-size` CLI argument
     pub fn try_new(
-        table: &Table,
+        table: Table,
         format: OutputFormat,
         scale_factor: f64,
         cli_part: Option<i32>,
@@ -101,11 +101,17 @@ impl GenerationPlan {
         }
     }
 
+    /// Return true if the tables is unpartitionable (not parameterized by part
+    /// count)
+    pub fn partitioned_table(table: Table) -> bool {
+        table != Table::Nation && table != Table::Region
+    }
+
     /// Returns a new `GenerationPlan` when partitioning
     ///
     /// See [`GenerationPlan::try_new`] for argument documentation.
     fn try_new_with_parts(
-        table: &Table,
+        table: Table,
         format: OutputFormat,
         scale_factor: f64,
         cli_part: i32,
@@ -129,7 +135,7 @@ impl GenerationPlan {
 
         // These tables are so small they are not parameterized by part count,
         // so only a single part.
-        if table == &Table::Nation || table == &Table::Region {
+        if !Self::partitioned_table(table) {
             return Ok(Self {
                 part_count: 1,
                 part_list: 1..=1,
@@ -170,7 +176,7 @@ impl GenerationPlan {
 
     /// Returns a new `GenerationPlan` when no partitioning is specified on the command line
     fn try_new_without_parts(
-        table: &Table,
+        table: Table,
         format: OutputFormat,
         scale_factor: f64,
         parquet_row_group_bytes: i64,
@@ -182,6 +188,11 @@ impl GenerationPlan {
             part_count: num_parts,
             part_list: 1..=num_parts,
         })
+    }
+
+    /// Return the number of part(ititions) this plan will generate
+    pub fn chunk_count(&self) -> usize {
+        self.part_list.clone().count()
     }
 }
 
@@ -219,7 +230,7 @@ struct OutputSize {
 
 impl OutputSize {
     pub fn new(
-        table: &Table,
+        table: Table,
         scale_factor: f64,
         format: OutputFormat,
         parquet_row_group_bytes: i64,
@@ -318,7 +329,7 @@ impl OutputSize {
         }
     }
 
-    fn row_count_for_table(table: &Table, scale_factor: f64) -> i64 {
+    fn row_count_for_table(table: Table, scale_factor: f64) -> i64 {
         //let (avg_row_size_bytes, row_count) = match table {
         match table {
             Table::Nation => 1,
@@ -786,7 +797,7 @@ mod tests {
         /// expected number of parts and part numbers.
         fn assert(self, expected_part_count: i32, expected_part_numbers: RangeInclusive<i32>) {
             let plan = GenerationPlan::try_new(
-                &self.table,
+                self.table,
                 self.format,
                 self.scale_factor,
                 self.cli_part,
@@ -801,7 +812,7 @@ mod tests {
         /// Assert that creating a [`GenerationPlan`] returns the specified error
         fn assert_err(self, expected_error: &str) {
             let actual_error = GenerationPlan::try_new(
-                &self.table,
+                self.table,
                 self.format,
                 self.scale_factor,
                 self.cli_part,
