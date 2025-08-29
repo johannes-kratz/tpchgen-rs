@@ -139,10 +139,18 @@ jobs:
       attestations: write # Used to generate artifact attestation
     steps:
       - uses: actions/download-artifact@v4
+
+      - name: Install twine
+        run: pip install twine
+
+      - name: Check distributions with twine
+        run: twine check --strict wheels-*/*
+
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: 'wheels-*/*'
+
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         with:
