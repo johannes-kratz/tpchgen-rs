@@ -37,7 +37,7 @@ for SF in "${SCALE_FACTORS[@]}"; do
     
     # Generate data using Rust implementation
     echo "Generating data with Rust implementation at SF=${SF}..."
-    cargo run --release --bin tpchgen-cli -- --scale-factor "${SF}" --output-dir "${RUST_DIR}"
+    cargo run --release --bin tpchgen-cli -- --scale-factor "${SF}" --output-dir "${RUST_DIR}" --dists-path tpchgen/src/dists.dss
     
     # Generate data using C implementation
     echo "Generating data with C implementation at SF=${SF}..."
