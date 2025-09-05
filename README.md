@@ -17,6 +17,7 @@ Blazing fast [TPCH] benchmark data generator, in pure Rust with zero dependencie
 1. Blazing Speed 🚀
 2. Obsessively Tested 📋
 3. Fully parallel, streaming, constant memory usage 🧠
+4. Custom distributions at runtime via `--dists-path` 📊
 
 ## Try it now
 
@@ -70,7 +71,7 @@ the output of this crate with [`dbgen`] as part of every checkin. See
   format. It depends on the arrow-rs library
 
 - [`tpchgen-cli`](tpchgen-cli) is a [`dbgen`] compatible CLI tool that generates
-  benchmark dataset using multiple processes.
+  benchmark dataset using multiple processes and supports custom distributions via `--dists-path`.
 
 [Apache Arrow]: https://arrow.apache.org/
 [`dbgen`]: https://github.com/electrum/tpch-dbgen
