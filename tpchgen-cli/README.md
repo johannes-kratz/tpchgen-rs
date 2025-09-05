@@ -39,16 +39,16 @@ RUSTFLAGS='-C target-cpu=native' cargo install tpchgen-cli
 ```shell
 # Scale Factor 10, all tables, in Apache Parquet format in the current directory
 # (3.6GB, 8 files, 60M lineitem rows, in 5 seconds on a modern laptop)
-tpchgen-cli -s 10 --format=parquet
+tpchgen-cli -s 10 --format=parquet --dists-path dists.dss
 
 # Scale Factor 10, all tables, in `tbl`(csv like) format in the `sf10` directory
 # (10GB, 8 files, 60M lineitem rows)
-tpchgen-cli -s 10 --output-dir sf10
+tpchgen-cli -s 10 --output-dir sf10 --dists-path dists.dss
 
-# Scale Factor 1000, lineitem table, in Apache Parquet format in sf1000 directory, 
+# Scale Factor 1000, lineitem table, in Apache Parquet format in sf1000 directory,
 # 20 part(ititons), 100MB row groups
 # (220GB, 20 files, 6B lineitem rows, 3.5 minutes on a modern laptop)
-tpchgen-cli -s 1000 --tables lineitem --parts 20 --format=parquet --parquet-row-group-bytes=100000000 --output-dir sf1000
+tpchgen-cli -s 1000 --tables lineitem --parts 20 --format=parquet --parquet-row-group-bytes=100000000 --output-dir sf1000 --dists-path dists.dss
 
 # Scale Factor 10, partition 2 and 3 of 10 in sf10 directory
 #
@@ -59,15 +59,15 @@ tpchgen-cli -s 1000 --tables lineitem --parts 20 --format=parquet --parquet-row-
 # └── orders
 #    ├── orders.2.tbl
 #    └── orders.3.tbl
-#     
+#
 for PART in `seq 2 3`; do
-  tpchgen-cli --tables lineitem,orders --scale-factor=10 --output-dir partitioned --parts 10 --part $PART
+  tpchgen-cli --tables lineitem,orders --scale-factor=10 --output-dir partitioned --parts 10 --part $PART --dists-path dists.dss
 done
 ```
 
-## Custom distributions
+## Distributions file
 
-To use a custom distribution file, pass `--dists-path`:
+A distributions file must be specified using `--dists-path`:
 
 ```shell
 # load distributions from my.dss
