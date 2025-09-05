@@ -133,6 +133,10 @@ struct Cli {
     /// Typical values range from 10MB to 100MB.
     #[arg(long, default_value_t = DEFAULT_PARQUET_ROW_GROUP_BYTES)]
     parquet_row_group_bytes: i64,
+
+    /// Path to a custom distributions file
+    #[arg(long)]
+    dists_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -248,6 +252,10 @@ async fn main() -> io::Result<()> {
 impl Cli {
     /// Main function to run the generation
     async fn main(self) -> io::Result<()> {
+        if let Some(path) = &self.dists_path {
+            Distributions::init_from_path(path)?;
+        }
+
         if self.verbose {
             // explicitly set logging to info / stdout
             env_logger::builder().filter_level(LevelFilter::Info).init();

@@ -65,6 +65,15 @@ for PART in `seq 2 3`; do
 done
 ```
 
+## Custom distributions
+
+To use a custom distribution file, pass `--dists-path`:
+
+```shell
+# load distributions from my.dss
+tpchgen-cli -s 10 --dists-path my.dss
+```
+
 ## Performance
 
 | Scale Factor | `tpchgen-cli` | DuckDB     | DuckDB (proprietary) |

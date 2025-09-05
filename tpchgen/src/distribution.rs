@@ -1,7 +1,9 @@
 use crate::random::RowRandomInt;
 use std::{
+    fs,
     io::{self},
-    sync::LazyLock,
+    path::Path,
+    sync::OnceLock,
 };
 
 /// TPC-H distributions seed file.
@@ -168,8 +170,7 @@ impl Distribution {
 /// Static global instance of the default distributions.
 ///
 /// Initialized once on first access.
-static DEFAULT_DISTRIBUTIONS: LazyLock<Distributions> =
-    LazyLock::new(|| Distributions::try_load_default().unwrap());
+static DEFAULT_DISTRIBUTIONS: OnceLock<Distributions> = OnceLock::new();
 
 /// Distributions wraps all TPC-H distributions and provides methods to access them.
 #[derive(Debug, Clone, Default)]
@@ -199,8 +200,8 @@ pub struct Distributions {
 }
 
 impl Distributions {
-    pub fn try_load_default() -> io::Result<Self> {
-        let lines = DISTS_SEED.split('\n');
+    fn try_from_str(data: &'static str) -> io::Result<Self> {
+        let lines = data.split('\n');
 
         let mut new_self = Self::default();
         for (name, distribution) in Self::load_distributions(lines)? {
@@ -241,6 +242,26 @@ impl Distributions {
         }
 
         Ok(new_self)
+    }
+
+    pub fn try_load_default() -> io::Result<Self> {
+        Self::try_from_str(DISTS_SEED)
+    }
+
+    pub fn try_from_path(path: impl AsRef<Path>) -> io::Result<Self> {
+        let contents = fs::read_to_string(path)?;
+        let leaked: &'static str = Box::leak(contents.into_boxed_str());
+        Self::try_from_str(leaked)
+    }
+
+    pub fn init_from_path(path: impl AsRef<Path>) -> io::Result<()> {
+        let dist = Self::try_from_path(path)?;
+        DEFAULT_DISTRIBUTIONS.set(dist).map_err(|_| {
+            io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "Distributions already initialized",
+            )
+        })
     }
 
     /// Loads distributions from a stream of lines.
@@ -292,7 +313,9 @@ impl Distributions {
 
     /// Returns a static reference to the default distributions.
     pub fn static_default() -> &'static Distributions {
-        &DEFAULT_DISTRIBUTIONS
+        DEFAULT_DISTRIBUTIONS.get_or_init(|| {
+            Distributions::try_load_default().expect("failed to load default distributions")
+        })
     }
 
     /// Returns the `adjectives` distribution.
